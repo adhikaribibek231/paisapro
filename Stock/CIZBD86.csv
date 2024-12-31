@@ -1,4 +1,5 @@
 Id,Business Date,Security Id,Symbol,Security Name,Open Price,High Price,Low Price,Close Price,Total Traded Quantity,Total Traded Value,Previous Day Close Price,Fifty Two Week High,Fifty Two Week Low,Last Updated Time,Last Updated Price,Total Trades,Average Traded Price,Market Capitalization
+175,2024-10-23,2889,CIZBD86,10.25% Citizens Bank Debenture 2086,1060.0,1060.0,1060.0,1060.0,25,26500.0,1070.0,1075.0,950.0,2024-10-23T13:34:02.907571,1060.0,1,1060.0,2650.0
 170,2024-12-09,2889,CIZBD86,10.25% Citizens Bank Debenture 2086,1060.0,1124.8,1060.0,1124.8,60,67160.0,1060.0,1124.8,950.0,2024-12-09T12:57:24.563736,1124.8,4,1119.33,2812.0
 170,2024-12-24,2889,CIZBD86,10.25% Citizens Bank Debenture 2086,1147.0,1147.2,1147.0,1147.2,35,40149.7,1124.8,1147.2,950.0,2024-12-24T14:50:30.856569,1147.2,3,1147.13,2868.0
 154,2024-12-29,2889,CIZBD86,10.25% Citizens Bank Debenture 2086,1131.1,1131.1,1131.0,1131.0,100,113102.5,1147.2,1147.2,950.0,2024-12-29T13:01:31.259762,1131.0,2,1131.02,2827.5

@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import csv
+import re  # Import regex module for filename matching
 
 # Define folder paths
 base_folder = "E:/projects/paisapro"
@@ -29,9 +30,12 @@ def clean_file(file_path, temp_path):
                 print(f"Skipped malformed row in {os.path.basename(file_path)}, Line {i}: {row}")
 
 def process_daily_summaries():
+    # Define the regex pattern for filenames
+    file_pattern = re.compile(r"^(Today's Price - )?\d{4}-\d{2}-\d{2}\.csv$")
+
     for file_name in os.listdir(daily_summary_folder):
-        if not file_name.endswith('.csv'):
-            continue
+        if not file_pattern.match(file_name):
+            continue  # Skip files that don't match the pattern
 
         daily_file_path = os.path.join(daily_summary_folder, file_name)
         temp_file_path = os.path.join(daily_summary_folder, f"temp_{file_name}")
