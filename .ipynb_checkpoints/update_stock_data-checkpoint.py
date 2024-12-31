@@ -2,20 +2,16 @@ import os
 import pandas as pd
 
 # Define folder paths
-base_folder = "E:/projects/paisapro"
+base_folder = "paisapro"
 daily_summary_folder = os.path.join(base_folder, "Daily Stock Summary")
-stock_folder = os.path.join(base_folder, "Stock")
+stock_wise_folder = os.path.join(base_folder, "Stock Wise")
 
-# Create the stock folder if it doesn't exist
-os.makedirs(stock_folder, exist_ok=True)
+# Create the stock-wise folder if it doesn't exist
+os.makedirs(stock_wise_folder, exist_ok=True)
 
 def process_daily_summaries():
     # Get all daily summary files
-    try:
-        daily_files = [f for f in os.listdir(daily_summary_folder) if f.endswith('.csv')]
-    except FileNotFoundError:
-        print(f"Error: The folder {daily_summary_folder} does not exist. Please check the folder structure.")
-        return
+    daily_files = [f for f in os.listdir(daily_summary_folder) if f.endswith('.csv')]
 
     for daily_file in daily_files:
         # Read the daily summary file
@@ -28,11 +24,12 @@ def process_daily_summaries():
             continue
         
         daily_data['Business Date'] = pd.to_datetime(daily_data['Business Date'])  # Convert to datetime
+        daily_date = daily_file.split(".")[0]  # Extract the date from filename
 
         # Process each symbol in the daily data
         for symbol in daily_data['Symbol'].unique():
             symbol_data = daily_data[daily_data['Symbol'] == symbol]
-            symbol_file = os.path.join(stock_folder, f"{symbol}.csv")
+            symbol_file = os.path.join(stock_wise_folder, f"{symbol}.csv")
             
             # If the symbol file exists, append new data
             if os.path.exists(symbol_file):
