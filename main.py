@@ -1,7 +1,7 @@
 import pandas as pd
 import os
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import precision_score
+from sklearn.ensemble import RandomForestRegressor  # Regressor for predicting actual prices
+from sklearn.metrics import mean_absolute_error  # Using MAE for regression evaluation
 import matplotlib.pyplot as plt
 
 # Function to load and process stock data
@@ -18,15 +18,23 @@ def load_and_process_stock_data(file_path):
     stock_data = stock_data[["Open Price", "High Price", "Low Price", "Close Price", "Total Traded Quantity"]]
 
     # Feature Engineering
-    stock_data["Tomorrow"] = stock_data["Close Price"].shift(-1)
-    stock_data["Target"] = (stock_data["Tomorrow"] > stock_data["Close Price"]).astype(int)
+    stock_data["Tomorrow_Open"] = stock_data["Open Price"].shift(-1)
+    stock_data["Tomorrow_High"] = stock_data["High Price"].shift(-1)
+    stock_data["Tomorrow_Low"] = stock_data["Low Price"].shift(-1)
+    stock_data["Tomorrow_Close"] = stock_data["Close Price"].shift(-1)
+
+    # Creating Targets for prediction
+    stock_data["Target_Open"] = stock_data["Tomorrow_Open"]
+    stock_data["Target_High"] = stock_data["Tomorrow_High"]
+    stock_data["Target_Low"] = stock_data["Tomorrow_Low"]
+    stock_data["Target_Close"] = stock_data["Tomorrow_Close"]
 
     # Adding rolling averages and trend indicators (only apply rolling features that are sensible for the dataset size)
     horizons = [2, 5]  # Limited horizons for small dataset
     for horizon in horizons:
         rolling = stock_data.rolling(horizon, min_periods=1)  # Min period to avoid dropping data
         stock_data[f"Close_Ratio_{horizon}"] = stock_data["Close Price"] / rolling.mean()["Close Price"]
-        stock_data[f"Trend_{horizon}"] = rolling.sum()["Target"]
+        stock_data[f"Trend_{horizon}"] = rolling.sum()["Target_Close"]
     
     # Adding lagged features
     lags = [1, 2, 3, 5]
@@ -41,7 +49,7 @@ def load_and_process_stock_data(file_path):
     
     return stock_data
 
-# Function to train and evaluate the model
+# Function to train and evaluate the model for each target
 def train_and_evaluate_model(stock_data):
     if stock_data.empty:
         print("No data to process.")
@@ -49,7 +57,7 @@ def train_and_evaluate_model(stock_data):
     
     # Define predictors (use only the relevant columns)
     predictors = [col for col in stock_data.columns if "Close" in col or "Trend" in col or "Lag" in col]
-    
+
     # Automatically adjust the train-test split based on available data
     train_size = int(0.8 * len(stock_data))  # 80% of data for training
     test_size = len(stock_data) - train_size  # Remaining 20% for testing
@@ -62,22 +70,41 @@ def train_and_evaluate_model(stock_data):
     print(f"Training data size: {train.shape[0]}")
     print(f"Testing data size: {test.shape[0]}")
 
-    # Model training
-    model = RandomForestClassifier(random_state=1)
-    model.fit(train[predictors], train["Target"])
+    # Model training (using RandomForestRegressor for predicting actual prices)
+    model_open = RandomForestRegressor(random_state=1)
+    model_high = RandomForestRegressor(random_state=1)
+    model_low = RandomForestRegressor(random_state=1)
+    model_close = RandomForestRegressor(random_state=1)
+
+    # Train models for Open, High, Low, and Close
+    model_open.fit(train[predictors], train["Target_Open"])
+    model_high.fit(train[predictors], train["Target_High"])
+    model_low.fit(train[predictors], train["Target_Low"])
+    model_close.fit(train[predictors], train["Target_Close"])
 
     # Predicting on the test set
-    preds = model.predict_proba(test[predictors])[:, 1]
-    preds = (preds >= 0.6).astype(int)  # Threshold for classification
-    preds = pd.Series(preds, index=test.index, name="Predictions")
-    
+    preds_open = model_open.predict(test[predictors])
+    preds_high = model_high.predict(test[predictors])
+    preds_low = model_low.predict(test[predictors])
+    preds_close = model_close.predict(test[predictors])
+
     # Check if predictions are made correctly
-    print(f"Predictions: {preds.head()}")
-    
-    # Precision score
-    precision = precision_score(test["Target"], preds)
-    print(f"Precision: {precision}")
-    
+    print(f"Predictions for Open: {preds_open[:5]}")
+    print(f"Predictions for High: {preds_high[:5]}")
+    print(f"Predictions for Low: {preds_low[:5]}")
+    print(f"Predictions for Close: {preds_close[:5]}")
+
+    # Calculate Mean Absolute Error (MAE)
+    mae_open = mean_absolute_error(test["Target_Open"], preds_open)
+    mae_high = mean_absolute_error(test["Target_High"], preds_high)
+    mae_low = mean_absolute_error(test["Target_Low"], preds_low)
+    mae_close = mean_absolute_error(test["Target_Close"], preds_close)
+
+    print(f"Mean Absolute Error for Open: {mae_open}")
+    print(f"Mean Absolute Error for High: {mae_high}")
+    print(f"Mean Absolute Error for Low: {mae_low}")
+    print(f"Mean Absolute Error for Close: {mae_close}")
+
     # Filter the last 2-3 months' data (for example, if you have 23 days, you can take the last 15)
     plot_data = test[-10:]  # Adjust the number of points to match the last 2-3 months of data
     
@@ -86,13 +113,51 @@ def train_and_evaluate_model(stock_data):
         print("No data available for plotting.")
         return
 
-    # Plot predictions vs actual for the filtered period
-    combined = pd.concat([plot_data["Target"], preds], axis=1)
-    ax = combined.plot(title="Stock Predicted vs Actual", figsize=(10, 6))
-    
-    # Set xlim to focus on the specific range (last 2-3 months of data)
-    ax.set_xlim([plot_data.index.min(), plot_data.index.max()])  # Focus on the limited range
+    # Plot actual vs predicted values for Open, High, Low, and Close
+    plt.figure(figsize=(12, 8))
+    plt.plot(plot_data.index, plot_data["Target_Open"], label="Actual Open Price", color='blue', linestyle='-', marker='o')
+    plt.plot(plot_data.index, preds_open[-10:], label="Predicted Open Price", color='red', linestyle='--')
+
+    plt.plot(plot_data.index, plot_data["Target_High"], label="Actual High Price", color='green', linestyle='-', marker='o')
+    plt.plot(plot_data.index, preds_high[-10:], label="Predicted High Price", color='orange', linestyle='--')
+
+    plt.plot(plot_data.index, plot_data["Target_Low"], label="Actual Low Price", color='purple', linestyle='-', marker='o')
+    plt.plot(plot_data.index, preds_low[-10:], label="Predicted Low Price", color='yellow', linestyle='--')
+
+    plt.plot(plot_data.index, plot_data["Target_Close"], label="Actual Close Price", color='cyan', linestyle='-', marker='o')
+    plt.plot(plot_data.index, preds_close[-10:], label="Predicted Close Price", color='magenta', linestyle='--')
+
+    plt.title("Actual vs Predicted Prices (Open, High, Low, Close)")
+    plt.xlabel("Date")
+    plt.ylabel("Price")
+    plt.legend()
     plt.show()
+
+    # Predict the prices for the next 3 days based on the last row of the data
+    last_data_point = stock_data.iloc[-1][predictors].values.reshape(1, -1)
+
+    future_predictions = {
+        'Open': model_open.predict(last_data_point),
+        'High': model_high.predict(last_data_point),
+        'Low': model_low.predict(last_data_point),
+        'Close': model_close.predict(last_data_point)
+    }
+
+    # Print the predicted prices for the next 3 days
+    print("\nPredicted prices for the next 3 days:")
+    for day in range(1, 4):
+        print(f"Day {day}:")
+        future_predictions['Open'] = model_open.predict(last_data_point)
+        future_predictions['High'] = model_high.predict(last_data_point)
+        future_predictions['Low'] = model_low.predict(last_data_point)
+        future_predictions['Close'] = model_close.predict(last_data_point)
+        last_data_point = future_predictions  # Update the data point with predictions for the next day
+
+        print(f"Predicted Open: {future_predictions['Open'][0]:.2f}")
+        print(f"Predicted High: {future_predictions['High'][0]:.2f}")
+        print(f"Predicted Low: {future_predictions['Low'][0]:.2f}")
+        print(f"Predicted Close: {future_predictions['Close'][0]:.2f}")
+        print("")
 
 # Function to process the specific stock file based on the stock_name
 def process_specific_stock(stock_name, stock_folder):
